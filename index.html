@@ -1,1 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Journal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-top: 20px;
+        }
 
+        .day {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .day:hover {
+            background-color: #f0f0f0;
+        }
+
+        .profit {
+            color: green;
+        }
+
+        .loss {
+            color: red;
+        }
+
+        #monthSelector {
+            margin-bottom: 20px;
+            padding: 5px;
+        }
+
+        #totalPnL {
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        #entryForm {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ccc;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Trading Journal</h1>
+    
+    <select id="monthSelector"></select>
+    
+    <div id="calendar" class="calendar"></div>
+    
+    <div id="totalPnL">Monthly PnL: $0</div>
+    
+    <div id="entryForm">
+        <h3>Trade Entry</h3>
+        <input type="date" id="tradeDate">
+        <input type="number" id="pnlInput" placeholder="PnL ($)">
+        <button onclick="saveTrade()">Save</button>
+        <button onclick="closeForm()">Cancel</button>
+    </div>
+
+    <script>
+        let trades = {};
+        let currentDate = new Date();
+        
+        function initializeMonthSelector() {
+            const selector = document.getElementById('monthSelector');
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            for (let i = 0; i < 12; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.text = `${months[i]} ${currentDate.getFullYear()}`;
+                selector.appendChild(option);
+            }
+            selector.value = currentDate.getMonth();
+            selector.onchange = () => renderCalendar(parseInt(selector.value));
+        }
+
+        function renderCalendar(month) {
+            const calendar = document.getElementById('calendar');
+            calendar.innerHTML = '';
+            
+            const firstDay = new Date(currentDate.getFullYear(), month, 1);
+            const lastDay = new Date(currentDate.getFullYear(), month + 1, 0);
+            const startingDay = firstDay.getDay();
+            
+            // Add day names
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            days.forEach(day => {
+                const dayElement = document.createElement('div');
+                dayElement.textContent = day;
+                dayElement.className = 'day';
+                dayElement.style.backgroundColor = '#f0f0f0';
+                calendar.appendChild(dayElement);
+            });
+
+            // Add empty days before first day
+            for (let i = 0; i < startingDay; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'day';
+                calendar.appendChild(emptyDay);
+            }
+
+            // Add actual days
+            for (let i = 1; i <= lastDay.getDate(); i++) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'day';
+                const dateKey = `${currentDate.getFullYear()}-${month}-${i}`;
+                const pnl = trades[dateKey] || 0;
+                
+                dayElement.innerHTML = `${i}<br>${pnl !== 0 ? 
+                    `<span class="${pnl > 0 ? 'profit' : 'loss'}">$${pnl}</span>` : 
+                    '$0'}`;
+                
+                dayElement.onclick = () => showForm(dateKey);
+                calendar.appendChild(dayElement);
+            }
+
+            updateTotalPnL(month);
+        }
+
+        function updateTotalPnL(month) {
+            let total = 0;
+            for (let i = 1; i <= 31; i++) {
+                const dateKey = `${currentDate.getFullYear()}-${month}-${i}`;
+                total += trades[dateKey] || 0;
+            }
+            const totalElement = document.getElementById('totalPnL');
+            totalElement.innerHTML = `Monthly PnL: <span class="${total > 0 ? 'profit' : 'loss'}">$${total}</span>`;
+        }
+
+        function showForm(dateKey) {
+            const form = document.getElementById('entryForm');
+            const dateInput = document.getElementById('tradeDate');
+            const pnlInput = document.getElementById('pnlInput');
+            
+            const [year, month, day] = dateKey.split('-');
+            dateInput.value = `${year}-${String(parseInt(month) + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            pnlInput.value = trades[dateKey] || '';
+            
+            form.style.display = 'block';
+            form.dataset.dateKey = dateKey;
+        }
+
+        function saveTrade() {
+            const form = document.getElementById('entryForm');
+            const pnlInput = document.getElementById('pnlInput');
+            const dateKey = form.dataset.dateKey;
+            
+            trades[dateKey] = parseFloat(pnlInput.value) || 0;
+            const month = parseInt(dateKey.split('-')[1]);
+            renderCalendar(month);
+            closeForm();
+        }
+
+        function closeForm() {
+            document.getElementById('entryForm').style.display = 'none';
+        }
+
+        // Initialize
+        initializeMonthSelector();
+        renderCalendar(currentDate.getMonth());
+    </script>
+</body>
+</html>
